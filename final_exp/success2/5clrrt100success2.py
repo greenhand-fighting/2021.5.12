@@ -102,7 +102,7 @@ class CCRRT:
         self.D = np.diag([-2.0, -6.5])  # 2*2
         self.max_steer_step = 30  # max n_step for steering
 
-        self.p_safe = 0.95  # p_safe for chance constraint#-------------------------------------------------------------------------------这是对完全系数
+        self.p_safe = 0.99  # p_safe for chance constraint#-------------------------------------------------------------------------------这是对完全系数
 
         self.sigma_x0 = np.diag([0.2, 0.2, 0.1])  # sigma_x0
         self.sigma_control = np.diag([0.0, 0.0])  # control noise
@@ -520,7 +520,7 @@ class CCRRT:
         A, B = self.vehicle_constraints(current.x, current.y, current.yaw)
         delta_t = 0  # sum(min delte_tj)
         # cal for each obs
-        for obs in self.obstacle_list:
+        for obs in self.obstacle_list1:
 
             # rotate = np.zeros((3,3))
             # rotate[2,2] = 1.0
@@ -536,8 +536,8 @@ class CCRRT:
                 a = np.array([a])  # 1*3
                 x = np.array([[obs[0]], [obs[1]], [0.0]])  # 3*1
 
-                abs_mat = np.diag([obs[3] * math.sin(angle) + obs[2] * math.cos(angle),
-                                   obs[2] * math.sin(angle) + obs[3] * math.cos(angle), obs[4]])
+                abs_mat = np.diag([obs[6] * math.sin(angle) + obs[5] * math.cos(angle),
+                                   obs[5] * math.sin(angle) + obs[6] * math.cos(angle), obs[4]])
                 sigma = current.conv + abs_mat
                 # sigma = current.conv + np.diag([obs[2], obs[3], obs[4]]) # 3*3
                 erf_item = (a.dot(x).item() - b) / np.sqrt(2 * a.dot(sigma).dot(a.transpose()).item())
@@ -563,8 +563,8 @@ class CCRRT:
                     a = np.array([a])  # 1*3
                     x = np.array([[obs[0]], [obs[1]], [0.0]])  # 3*1
 
-                    abs_mat = np.diag([obs[3] * math.sin(angle) + obs[2] * math.cos(angle),
-                                       obs[2] * math.sin(angle) + obs[3] * math.cos(angle), obs[4]])
+                    abs_mat = np.diag([obs[6] * math.sin(angle) + obs[5] * math.cos(angle),
+                                       obs[5] * math.sin(angle) + obs[6] * math.cos(angle), obs[4]])
                     sigma = node.conv + abs_mat
                     # sigma = current.conv + np.diag([obs[2], obs[3], obs[4]]) # 3*3
                     erf_item = (a.dot(x).item() - b) / np.sqrt(2 * a.dot(sigma).dot(a.transpose()).item())
@@ -1036,7 +1036,7 @@ def obstacle_uncertainty_fusion1(gts):
         #b = gt[3] / 2.0
         #d_a = a * (1 - b * math.sqrt((1 + math.tan(un[2])**2) / (b**2 + a**2 * math.tan(un[2])**2)))
         #d_b = d_a / a * b
-        obs.append((gt[0], gt[1], gt[5], gt[6], gt[4]))  #注意，这里的列表中表示的椭圆，使用长短半轴表示的，并不是整个轴！！！
+        obs.append((gt[0], gt[1], gt[5], gt[6], gt[4],gt[5]-gt[2] / 2.0,gt[6]-gt[3] / 2.0))  #注意，这里的列表中表示的椭圆，使用长短半轴表示的，并不是整个轴！！！
         # obs.append((gt[0], gt[1], d_a + un[0], d_b + un[1], gt[4]))
     return obs
 

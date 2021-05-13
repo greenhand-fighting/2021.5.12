@@ -46,7 +46,7 @@ class CCRRT:
             self.cost_lb = 0.0  # cost lower bound
             self.cost_ub = math.inf  # cost upper bound
 
-    def __init__(self, car, start, goal, obstacle_list, rand_area):
+    def __init__(self, car, start, goal, obstacle_list, rand_area,obstacle_list_for_pengzhuang_jiance):
         """
         Setting Parameter
         start:Start Position [x,y,yaw]
@@ -58,6 +58,7 @@ class CCRRT:
         self.start = self.Node(start[0], start[1], start[2])
         self.end = self.Node(goal[0], goal[1], goal[2])
         self.obstacle_list = obstacle_list
+        self.obstacle_list_for_pengzhuang_jiance=obstacle_list_for_pengzhuang_jiance
 
         assert len(rand_area) == 4, "rand_area = [x-min, x-max, y-min, y-max]"
         self.min_rand_x = rand_area[0]
@@ -496,8 +497,8 @@ class CCRRT:
                 a = np.array([a])  # 1*3
                 x = np.array([[obs[0]], [obs[1]], [0.0]])  # 3*1
 
-                abs_mat = np.diag([obs[3] * math.sin(angle) + obs[2] * math.cos(angle),
-                                   obs[2] * math.sin(angle) + obs[3] * math.cos(angle), obs[4]])
+                abs_mat = np.diag([obs[6] * math.sin(angle) + obs[5] * math.cos(angle),
+                                   obs[5] * math.sin(angle) + obs[6] * math.cos(angle), obs[4]])
                 sigma = current.conv + abs_mat
                 # sigma = current.conv + np.diag([obs[2], obs[3], obs[4]]) # 3*3
                 erf_item = (a.dot(x).item() - b) / np.sqrt(2 * a.dot(sigma).dot(a.transpose()).item())
@@ -848,7 +849,7 @@ class CCRRT:
             for x, y in zip(xs, ys):
                 t_node = self.Node(x, y, jiaodu)
                 #碰撞检测
-                if self.peng_zhuang_jian_ce(t_node,self.obstacle_list):
+                if self.peng_zhuang_jian_ce(t_node,self.obstacle_list_for_pengzhuang_jiance):
                     return False
                 #cc检测
                 if self.get_chance_constrain(t_node)>= 1-self.p_safe:
@@ -955,9 +956,14 @@ def obstacle_uncertainty_fusion(gts, uncertainties):
 def obstacle_uncertainty_fusion(gts):
     obs = []
     for gt in gts:
-        obs.append((gt[0], gt[1], gt[5]-gt[2]/2.0, gt[6]-gt[3]/2.0, gt[4]))  #注意，这里的列表中表示的椭圆，使用长短半轴表示的，并不是整个轴！！！
+        obs.append((gt[0], gt[1], gt[5], gt[6], gt[4], gt[5]-gt[2]/2.0, gt[6]-gt[3]/2.0))  #注意，这里的列表中表示的椭圆，使用长短半轴表示的，并不是整个轴！！！
     return obs
 
+def  get_obstacle_list_for_pengzhuang_jiance(gts):
+    obs=[]
+    for gt in gts:
+        obs.append((gt[0], gt[1], gt[2]/2.0, gt[3]/2.0, gt[4]))
+    return obs
 
 def draw_vehicle(obs_list):
     for obs in obs_list:
@@ -1106,23 +1112,29 @@ def main():
     # vehicle_length = long_axis * 2
     # vehicle_width = short_axis * 2
     obstacle_list = obstacle_uncertainty_fusion(obstacle_list_gt)
+    obstacle_list_for_pengzhuang_jiance=get_obstacle_list_for_pengzhuang_jiance(obstacle_list_gt)
 
     cc_rrt = CCRRT(
         car=car,
         start=start,
         goal=goal,
         rand_area=area,
-        obstacle_list=obstacle_list)
+        obstacle_list=obstacle_list,
+        obstacle_list_for_pengzhuang_jiance=obstacle_list_for_pengzhuang_jiance)
     cc_rrt.planning(animation=False)
+    
+
+        
     cc_rrt.draw_graph()
     cc_rrt.draw_path()
     draw_vehicle(obstacle_list_gt)
     draw_ground_true(ground_true_obs_list)
     draw_carsize_of_final_path(cc_rrt.path)
 
-    #plt.clf()
 
     plt.figure(2)
+    
+        
 
     tmp = [node.cc for node in cc_rrt.path]  # 从这个可以看出这个finalpath里面都是一些节点
     print(tmp)
@@ -1130,6 +1142,7 @@ def main():
     path_min = np.min(tmp)
     path_max = np.max(tmp)
     path_avg = np.average(tmp)
+    
     plt.axes([0.3, 0.1, 8 / 50, 8 / 10.55])
     plt.title("Without considering uncertainty\n Blue bounding box: Ground True" )
     plt.scatter([node.x for node in cc_rrt.node_list],
@@ -1147,7 +1160,7 @@ def main():
     plt.legend(loc='upper right')
     plt.grid(True)
     plt.show()
-
+                
 
 
 if __name__ == '__main__':
